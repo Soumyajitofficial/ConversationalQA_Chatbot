@@ -13,7 +13,7 @@ langchain-openai
 chromadb
 sentence_transformers
 langchain_huggingface
-faiss-cpu
+faiss-gpu
 langchain_chroma
 duckdb
 pandas
@@ -36,3 +36,4 @@ torch==2.2.2+cu118
 torchvision==0.17.2+cu118
 torchaudio==2.2.2+cu118
 --extra-index-url https://download.pytorch.org/whl/cu118
+huggingface_hub[hf_xet]
