@@ -1,42 +1,54 @@
+# APP.py
+
 import streamlit as st
+from session_manager import get_session_history
 from prompts.intent_detection_prompt import detect_intent
-from handlers import generic_handler, appointment_handler
+#from handlers.appointment_handler import handle_appointment
+#from handlers.generic_handler import handle_generic
 
-# Optional: You can expand this with more handlers
-def route_intent(intent: str, message: str) -> str:
-    if intent == "[generic]":
-        return generic_handler.handle(message)
-    elif intent == "appointment":
-        return appointment_handler.handle(message)
-    else:
-        return f"⚠️ No handler implemented for intent: [{intent}]"
+# Streamlit UI setup
+st.set_page_config(page_title="VBK Bot", layout="wide")
+st.title("📊 Virtuous Bookkeeping Assistant")
 
-# Streamlit page setup
-st.set_page_config(page_title="VBK Chatbot", page_icon="💬")
-st.title("💬 VBK Virtual Assistant")
-st.caption("Your accounting-friendly AI assistant 💼")
+# Session setup
+config1_input = st.text_input("Enter config (example: config1 = {\"configurable\": {\"session_id\": \"s1\"}}):", "")
+try:
+    config1 = eval(config1_input) if config1_input else {"configurable": {"session_id": "default"}}
+    session_id = config1["configurable"]["session_id"]
+except:
+    st.error("⚠️ Invalid config. Please enter a valid Python dictionary with session_id.")
+    session_id = "default"
 
-# Initialize chat history
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+# Get session-specific message history
+chat_history = get_session_history(session_id)
 
-# Handle user input
-user_input = st.chat_input("Type your message here...")
+# Chat interface
+user_input = st.text_input("You:", key="user_input")
 
-if user_input:
-    # Show user message
-    st.session_state.chat_history.append(("You", user_input))
+if st.button("Send"):
+    if user_input:
+        # Add user message to chat history
+        chat_history.add_user_message(user_input)
 
-    # Intent detection
-    intent = detect_intent(user_input)
+        # Detect intent
+        intent = detect_intent(user_input)
 
-    # Route to appropriate handler
-    reply = route_intent(intent, user_input)
+        # Handle intent
+        if intent == "[appointment]":
+            response = handle_appointment(user_input)
+        elif intent == "[generic]":
+            response = handle_generic(user_input)
+        elif intent == "[handoff]":
+            response = "👩‍💼 Please wait while we connect you to a team member."
+        else:
+            response = f"⚠️ No handler implemented for intent: {intent}"
 
-    # Show bot response
-    st.session_state.chat_history.append(("Bot", reply))
+        # Add assistant message to chat history
+        chat_history.add_ai_message(response)
 
-# Display chat history
-for sender, msg in st.session_state.chat_history:
-    with st.chat_message("user" if sender == "You" else "assistant"):
-        st.write(msg)
+# Display conversation history
+if chat_history.messages:
+    st.subheader("Conversation History")
+    for msg in chat_history.messages:
+        role = "You" if msg.type == "human" else "Bot"
+        st.markdown(f"**{role}:** {msg.content}")
